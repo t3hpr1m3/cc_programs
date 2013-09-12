@@ -1,13 +1,32 @@
+--[[
+-- Simple program to control my Forestry tree farm.
+--
+-- Computer is connected via MFR RedNet cables to TE Steam engines, which power
+-- a Redstone Energy Cell.  The Cell is used to power both the farm, as well as a
+-- small ME Network that stores the output of the farm.
+--
+-- The Energy Cell is located directly behind the computer, so it can be
+-- queried without using any sort of gate.
+--
+-- The computer sits right below the farm's Control block, and allows the farm
+-- to be turned on/off with a redstone signal.
+--]]
+
+-- Constants for the various bits, in case I ever need to rearrange.
 local ENGINE_COLOR = colors.white
 local ENGINE_SIDE = "bottom"
-local engineStatus = nil
 
 local CELL_SIDE = "back"
 
 local FARM_SIDE = "top"
 
-local w, h = term.getSize()
+-- Set the engine status to nil initially, so it is force-read on the first
+-- iteration of the processing loop.
+local engineStatus = nil
 
+--[[
+-- Retrieves the status of the Steam engines
+--]]
 function getEngineStatus()
 	if engineStatus == nil then
 		engineStatus = (redstone.getBundledOutput(ENGINE_SIDE) ~= ENGINE_COLOR)
@@ -15,44 +34,21 @@ function getEngineStatus()
 	return engineStatus
 end
 
+--[[
+-- Sets the Steam engines to the desired state (unless they're already there).
+--]]
 function setEngineStatus(status)
 	if status ~= getEngineStatus() then
-		if status == true then
-			redstone.setBundledOutput(ENGINE_SIDE, 0)
-		else
-			redstone.setBundledOutput(ENGINE_SIDE, ENGINE_COLOR)
-		end
+		local color = status and 0 or ENGINE_COLOR
+		redstone.setBundledOutput(ENGINE_SIDE, color)
 		engineStatus = status
 		printEngineStatus()
 	end
 end
 
-function getCellStats(c)
-	stats = c.getPowerProvider()
-	stats["full"] = stats["energyStored"] == stats["maxEnergyStored"]
-	stats["drained"] = stats["maxEnergyStored"] / stats["energyStored"] < .1
-	return stats
-end
-
-function printCellStats(stats)
-	local x, y, i, barWidth, current, currentString
-	term.setCursorPos(1, 1)
-	term.clearLine()
-	term.write("Cell:    [")
-	x, y = term.getCursorPos()
-	barWidth = w - x
-	term.setCursorPos(w, 1)
-	term.write("]")
-	term.setCursorPos(x, 1)
-	current = stats["energyStored"] / stats["maxEnergyStored"]
-	for i = 1, math.floor(barWidth * current) do
-		term.write("#")
-	end
-	currentString = " " .. math.floor(current * 100) .. "% "
-	term.setCursorPos(w - (barWidth / 2) - (#currentString / 2), y)
-	term.write(currentString)
-end
-
+--[[
+-- Dumps the engine status to the screen.
+--]]
 function printEngineStatus()
 	local status = getEngineStatus()
 	term.setCursorPos(1, 2)
@@ -65,6 +61,43 @@ function printEngineStatus()
 	end
 end
 
+--[[
+-- Retrieve energy stats from the Redstone Energy Cell.
+--]]
+function getCellStats(c)
+	stats = c.getPowerProvider()
+
+	-- Add some quick helper values for the rest of the script to use 
+	stats["full"] = stats["energyStored"] == stats["maxEnergyStored"]
+	stats["drained"] = stats["maxEnergyStored"] / stats["energyStored"] < .1
+	stats["percentage"] = stats["energyStored"] / stats["maxEnergyStored"]
+	return stats
+end
+
+--[[
+-- Dumps the Energy cell data to the screen.
+--]]
+function printCellStats(stats)
+	local x, y, i, barWidth, current, currentString
+	term.setCursorPos(1, 1)
+	term.clearLine()
+	term.write("Cell:    [")
+	x, y = term.getCursorPos()
+	barWidth = w - x
+	term.setCursorPos(w, 1)
+	term.write("]")
+	term.setCursorPos(x, 1)
+	for i = 1, math.floor(barWidth * stats["percentage"]) do
+		term.write("#")
+	end
+	currentString = " " .. math.floor(stats["percentage"] * 100) .. "% "
+	term.setCursorPos(w - (barWidth / 2) - (#currentString / 2), y)
+	term.write(currentString)
+end
+
+--[[
+-- Turns the farm on/off.
+--]]
 function toggleFarmStatus()
 	if redstone.getOutput(FARM_SIDE) == true then
 		redstone.setOutput(FARM_SIDE, false)
@@ -74,6 +107,9 @@ function toggleFarmStatus()
 	printFarmStatus()
 end
 
+--[[
+-- Dumps the farm status to the screen.
+--]]
 function printFarmStatus()
 	local disabled = redstone.getOutput(FARM_SIDE)
 	term.setCursorPos(1, 3)
@@ -86,13 +122,16 @@ function printFarmStatus()
 	end
 end
 
-local on = true
+-- Number of seconds to wait between loop iterations
 local interval = 5
 
+-- Wrap up the energy cell
 local cell = peripheral.wrap(CELL_SIDE)
-local cellStats = getCellStats(cell)
-term.clear()
 
+local w, h = term.getSize()
+
+-- Print the initial "menu"
+term.clear()
 term.setCursorPos(1, 6)
 term.clearLine()
 term.write("Press 'T' to toggle the farm status.")
@@ -102,14 +141,26 @@ term.write("Press 'E' to force the engines to 'ON'.")
 term.setCursorPos(1, 8)
 term.clearLine()
 term.write("Press 'Q' to exit.")
+
+-- Do an initial dump of the stats
+local cellStats = getCellStats(cell)
 printCellStats(cellStats)
 printEngineStatus()
+printFarmStatus()
+
+-- This timer just "primes the pump" so our loop logic gets executed
+-- immediately the first time through.
 local timer = os.startTimer(0)
 
+local looping = true
 
-while on do
+-- Main processing loop
+while looping do
 	local event, p1, p2, p3 = os.pullEvent()
 	if event == "timer" then
+		--[[
+		-- TIMER events
+		--]]
 		cellStats = getCellStats(cell)
 		printCellStats(cellStats)
 		printFarmStatus()
@@ -119,7 +170,10 @@ while on do
 			setEngineStatus(false)
 		end
 		os.startTimer(interval)
-	elseif (event == "key") then
+	elseif event == "key" then
+		--[[
+		-- KEY events
+		--]]
 		if keys.getName(p1) == "t" then
 			toggleFarmStatus()
 		elseif keys.getName(p1) == "e" then
@@ -128,7 +182,7 @@ while on do
 			term.clear()
 			term.setCursorPos(1, 1)
 			print("Exiting...")
-			on = false
+			looping = false
 			os.queueEvent("dummy")
 			os.pullEvent()
 		end
