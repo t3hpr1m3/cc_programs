@@ -1,0 +1,120 @@
+os.loadAPI("vUtils")
+
+local DEV = 1
+
+local ENGINE_COLOR = colors.white
+local ENGINE_SIDE = "bottom"
+local engineStatus = nil
+
+local CELL_SIDE = "BACK"
+
+local FARM_SIDE = "TOP"
+
+local w, h = term.getSize()
+
+function getEngineStatus()
+	if engineStatus == nil then
+		if DEV then
+			engineStatus = false
+		else
+			engineStatus = redstone.getBundledOutput(ENGINE_SIDE) == ENGINE_COLOR
+		end
+	else
+		engineStatus
+	end
+end
+
+function setEngineStatus(status)
+	if status ~= getEngineStatus() then
+		if DEV == 0 then
+			if status == true then
+				redstone.setBundledOutput(ENGINE_SIDE, 0)
+			else
+				redstone.setBundledOutput(ENGINE_SIDE, ENGINE_COLOR)
+			end
+		end
+		engineStatus = status
+		printEngineStatus()
+	end
+end
+
+function getCellStats(c)
+	stats = c.getPowerProvider()
+	stats["full"] = stats["energyStored"] == stats["maxEnergyStored"]
+	stats["drained"] = stats["maxEnergyStored"] / stats["energyStored"] < .1
+end
+
+function printCellStats(stats)
+	local x, y, i, barWidth, current, currentString
+	term.setCursorPos(1, 1)
+	term.clearLine()
+	term.write("Cell:    [")
+	x, y = term.getCursorPos()
+	barWidth = w - x
+	term.setCursorPos(w, 1)
+	term.write("]")
+	term.setCursorPos(x, 1)
+	current = stats["energyStored"] / stats["maxEnergyStored"]
+	for i = 1, math.floor(barWidth * current) do
+		term.write("#")
+	end
+	currentString = " " .. math.floor(current * 100) .. "% "
+	term.setCursorPos(w - (barWidth / 2) - (#currentString / 2), y)
+	term.write(currentString)
+end
+
+function printEngineStatus()
+	local status = getEngineStatus()
+	term.setCursorPos(1, 2)
+	term.clearLine()
+	term.write("Engines: ")
+	if status == true then
+		term.write("     ON")
+	else
+		term.write("OFF")
+	end
+end
+
+function printFarmStatus()
+	local status = redstone.getOutput(FARM_SIDE)
+	term.setCursorPos(1, 3)
+	term.clearLine()
+	term.write("Farm:    ")
+	if status == true then
+		term.write("     ON")
+	else
+		term.write("OFF")
+	end
+end
+
+local on = true
+local interval = 5
+
+local cell = peripheral.wrap(CELL_SIDE)
+local timer = os.startTimer(0)
+
+while on do
+	local event, p1, p2, p3 = os.pullEvent()
+	if event == "timer" then
+		cellStats = getCellStats(cell)
+		printCellStats(cellStats)
+		printFarmStatus()
+		if cellStats["drained"] == true then
+			setEngineStatus(true)
+		elseif cellStats["full"] == true then
+			setEngineStatus(false)
+		end
+		os.startTimer(interval)
+	elseif (event == "key") then
+		if keys.getName(p1) == "t" then
+			toggleFarmStatus()
+		elseif keys.getName(p1) == "q" then
+			term.clear()
+			term.setCursorPos(1, 1)
+			print("Exiting...")
+			on = false
+			os.queueEvent("dummy")
+			os.pullEvent()
+		end
+	end
+end
