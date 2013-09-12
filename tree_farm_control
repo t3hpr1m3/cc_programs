@@ -24,6 +24,8 @@ local FARM_SIDE = "top"
 -- iteration of the processing loop.
 local engineStatus = nil
 
+local w, h = term.getSize()
+
 --[[
 -- Retrieves the status of the Steam engines
 --]]
@@ -127,8 +129,6 @@ local interval = 5
 
 -- Wrap up the energy cell
 local cell = peripheral.wrap(CELL_SIDE)
-
-local w, h = term.getSize()
 
 -- Print the initial "menu"
 term.clear()
