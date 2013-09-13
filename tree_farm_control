@@ -69,7 +69,7 @@ EnergyCell.__index = EnergyCell
 
 function EnergyCell.create(s)
 	assert(type(s) == "string", "EnergyCell.create() expects argument 'side' to be a valid side.")
-	assert(EnergyCell.isCell(s) == true, "EnergyCell.create(): No EnergyCell found on side " .. s .. ".")
+	assert(EnergyCell.isEnergyCell(s) == true, "EnergyCell.create(): No EnergyCell found on side " .. s .. ".")
 
 	local e = {}
 	setmetatable(e, EnergyCell)
@@ -85,14 +85,14 @@ function EnergyCell.create(s)
 end
 
 function EnergyCell.isEnergyCell(side)
-	return (prepheral.isPresent(side) and peripheral.getType(side) == "redstone_energy_cell")
+	return (peripheral.isPresent(side) and peripheral.getType(side) == "redstone_energy_cell")
 end
 
 function EnergyCell:poll()
 	local d = self.p.getPowerProvider()
-	self.capacity = d["maxEnergyStored"
+	self.capacity = d["maxEnergyStored"]
 	self.current = d["energyStored"]
-	self.percentage = self.current / self.current / self.capacity
+	self.percentage = self.current / self.capacity
 	self.full = self.current == self.capacity
 	self.drained = self.percentage < .1
 end
