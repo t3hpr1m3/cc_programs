@@ -30,7 +30,7 @@ function progressBar(label, percentage, y_pos)
 	local w, h = term.getSize()
 	local x = term.getCursorPos()
 	local barWidth, progressString
-	term.setCursor(1, y_pos)
+	term.setCursorPos(1, y_pos)
 	term.clearLine()
 	term.write(label)
 	term.write("[")
@@ -130,13 +130,13 @@ function printFarmStatus()
 end
 
 function saveFarmStatus()
-	f = fs.open("farm_status", "w")
+	local f = fs.open("farm_status", "w")
 	if redstone.getOutput(FARM_SIDE) == true then
 		f.writeLine("0")
 	else
 		f.writeLine("1")
 	end
-	f.close
+	f.close()
 end
 
 function readFarmStatus()
@@ -174,7 +174,7 @@ term.clearLine()
 term.write("Press 'Q' to exit.")
 
 -- Turn the farm on/off depending on its last state
-if getFarmStatus() == false then
+if readFarmStatus() == false then
 	redstone.setOutput(FARM_SIDE, true)
 end
 
