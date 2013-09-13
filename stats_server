@@ -9,17 +9,13 @@ os.loadAPI('vUtils')
 local MONITOR_ID = "monitor_0"
 
 function buildTankTable(tanks)
-  local offset = 0
-  local barWidth = 0
-  for i, t in pairs(tanks) do
-    pxOffset = offset * 20
-    t["label"] = t["liquid"] .. " Tank #" .. i
-  end
-  return tanks
-end
-
-function redirectToMonitor()
-	term.redirect(peripheral.wrap(MONITOR_ID))
+	local offset = 0
+	local barWidth = 0
+	for i, t in pairs(tanks) do
+		pxOffset = offset * 20
+		t["label"] = t["liquid"] .. " Tank #" .. i
+	end
+	return tanks
 end
 
 -- Open the wired network
@@ -27,61 +23,45 @@ local net = peripheral.wrap("back")
 net.open(1)
 
 -- Open the monitor
-local monitor = peripheral.wrap("right")
--- Put the output on the monitor
-term.redirect(peripheral.wrap("monitor_0"))
+local monitor = peripheral.wrap("monitor_0")
+monitor.clear()
+local w, h = monitor.getSize()
+
 term.clear()
 term.setCursorPos(1,1)
-local w, h = term.getSize()
 
 local tanks = nil
 
-local on = true
+local looping = true
 local interval = 5
 local timer = os.startTimer(0)
 local x, y, barWidth, progress = 0
 local progressString = ""
 
-while on do
-  local event, p1, p2, p3, p4, p5 = os.pullEvent()
-  if event == "timer" then
-    net.transmit(2, 1, "GET_STATS")
-    os.startTimer(interval)
-  elseif event == "modem_message" then
-    -- Process stat response
-	print("Received STATS response")
-    message = textutils.unserialize(p4)
-    if message["TANK_DATA"] ~= nil then
-      tanks = buildTankTable(message["TANK_DATA"])
-    end
-
-	redirectToMonitor()
-	term.clear()
-    for i, t in pairs(tanks) do
-      term.setCursorPos(1, i)
-      term.write(t["label"])
-      term.write(" [")
-      x, y = term.getCursorPos()
-      barWidth = w - x
-      term.setCursorPos(w, i)
-      term.write("]")
-      term.setCursorPos(x, i)
-      progress = t.current / t.capacity
-      for k = 1, math.floor(barWidth * progress) do
-        term.write("#")
-      end
-      progressString = " " .. math.floor(progress * 100) .. "% "
-      term.setCursorPos(w - (barWidth / 2) - (#progressString / 2), y)
-      term.write(progressString)
-      term.setCursorPos(w, h)
-    end
-    term.restore()
-  elseif (event == "key" and p1 == 16) then
-    term.clear()
-    term.setCursorPos(1, 1)
-    print("Exiting...")
-    on = false
-    os.queueEvent("dummy")
-    os.pullEvent()
-  end
+while looping do
+	local event, p1, p2, p3, p4, p5 = os.pullEvent()
+	if event == "timer" then
+		net.transmit(2, 1, "GET_STATS")
+		os.startTimer(interval)
+	elseif event == "modem_message" then
+		-- Process stat response
+		print("Received STATS response")
+		message = textutils.unserialize(p4)
+		if message["TANK_DATA"] ~= nil then
+			tanks = buildTankTable(message["TANK_DATA"])
+		end
+		monitor.clear()
+		term.redirect(monitor)
+		for i, t in pairs(tanks) do
+			vUtils.progressBar(t["label"] .. " ", t["percentage"], i)
+		end
+		term.restore()
+	elseif (event == "key" and p1 == 16) then
+		term.clear()
+		term.setCursorPos(1, 1)
+		print("Exiting...")
+		looping = false
+		os.queueEvent("dummy")
+		os.pullEvent()
+	end
 end

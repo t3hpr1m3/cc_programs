@@ -1,14 +1,14 @@
 function printTable(t, indent)
-  if not indent then indent = 0 end
-  for key, value in pairs(t) do
-    formatting = string.rep(" ", indent) .. key .. ": "
-    if type(value) == "table" then
-      print(formatting)
-      print_table(value, indent + 2)
-    else
-      print(formatting .. tostring(value))
-    end
-  end
+	if not indent then indent = 0 end
+	for key, value in pairs(t) do
+		formatting = string.rep(" ", indent) .. key .. ": "
+		if type(value) == "table" then
+			print(formatting)
+			print_table(value, indent + 2)
+		else
+			print(formatting .. tostring(value))
+		end
+	end
 end
 
 function progressBar(label, percentage, y_pos)
@@ -48,42 +48,42 @@ Tank = {}
 Tank.__index = Tank
 
 function Tank.create(s)
-  assert(type(s) == "string", "Tank.create() expects argument 'side' to be a valid side.")
-  assert(Tank.isTank(s) == true, "Tank.create(): No valve found on side " .. s .. ".")
+	assert(type(s) == "string", "Tank.create() expects argument 'side' to be a valid side.")
+	assert(Tank.isTank(s) == true, "Tank.create(): No valve found on side " .. s .. ".")
 
-  local t = {}
-  setmetatable(t, Tank)
+	local t = {}
+	setmetatable(t, Tank)
 
-  t.p = peripheral.wrap(s)
-  t.side = s
-  t.capacity = 0
-  t.current = 0
-  t.liquid = ''
-  return t
+	t.p = peripheral.wrap(s)
+	t.side = s
+	t.capacity = 0
+	t.current = 0
+	t.liquid = ''
+	return t
 end
 
 function Tank.get_attached_tanks()
-  local t = {}
-  local sides = rs.getSides()
-  for i = 1, #sides do
-    if Tank.isTank(sides[i]) then
-      table.insert(t, Tank.create(sides[i]))
-    end
-  end
-  return t
+	local t = {}
+	local sides = rs.getSides()
+	for i = 1, #sides do
+		if Tank.isTank(sides[i]) then
+			table.insert(t, Tank.create(sides[i]))
+		end
+	end
+	return t
 end
 
 -- Is there a tank attached to a particular side of the computer?
 function Tank.isTank(side)
-  return (peripheral.isPresent(side) and peripheral.getType(side) == "iron_tank_valve")
+	return (peripheral.isPresent(side) and peripheral.getType(side) == "iron_tank_valve")
 end
 
 -- Retrieve the data from RailCraft
 function Tank:fetchData()
-  local d = self.p.getTanks(self.side)[1]
-  self.capacity = d.capacity
-  self.current = d.amount
-  self.liquid = d.name
+	local d = self.p.getTanks(self.side)[1]
+	self.capacity = d.capacity
+	self.current = d.amount
+	self.liquid = d.name
 end
 
 -- The Energy Cell class

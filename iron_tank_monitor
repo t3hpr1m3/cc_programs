@@ -10,45 +10,49 @@ os.loadAPI('vUtils')
 local tanks = vUtils.Tank.get_attached_tanks()
 
 -- Will get switched to off when q is pressed
-local on = true
+local looping = true
 
 -- Open the modem for communication
 net = peripheral.wrap("back")
 net.open(2)
 if net.isOpen(2) then
-  term.clear()
-  term.setCursorPos(1,1)
-  print("Terminal " .. os.computerID() .. " waiting for queries...")
+	term.clear()
+	term.setCursorPos(1,1)
+	print("Terminal " .. os.computerID() .. " waiting for queries...")
 else
-  print("Unable to open modem")
-  return
+	print("Unable to open modem")
+	return
 end
 
 local stats = {}
 local tankData = {}
 
 while on do
-  local event, p1, p2, p3, p4 = os.pullEvent()
-  if event == "modem_message" then
-    if p4 == "GET_STATS" then
-      print("Received GET_STATS from " .. p1)
-      tankData = {}
-	    for i, t in pairs(tanks) do
-	      t:fetchData()
-        stats = {}
-        stats["current"] = t.current
-        stats["capacity"] = t.capacity
-		stats["percentage"] = t.current / t.capacity
-        stats["liquid"] = t.liquid
-        print("Tank " .. i .. ": " .. stats.current .. "/" .. stats.capacity)
-        table.insert(tankData, stats)
-	    end
-      net.transmit(p3, p2, textutils.serialize({TANK_DATA = tankData}))
-    end
-  else
-    local key = p1
-    if key == 29 then
-      on = false
-    end
-  end
+	local event, p1, p2, p3, p4 = os.pullEvent()
+	if event == "modem_message" then
+		if p4 == "GET_STATS" then
+			print("Received GET_STATS from " .. p1)
+			tankData = {}
+			for i, t in pairs(tanks) do
+				t:fetchData()
+				stats = {}
+				stats["current"] = t.current
+				stats["capacity"] = t.capacity
+				stats["percentage"] = t.current / t.capacity
+				stats["liquid"] = t.liquid
+				print("Tank " .. i .. ": " .. stats.current .. "/" .. stats.capacity)
+				table.insert(tankData, stats)
+			end
+			net.transmit(p3, p2, textutils.serialize({TANK_DATA = tankData}))
+		end
+	elseif event == "key" then
+		if keys.getName(p1) == "q" then
+			term.clear()
+			term.setCursorPos(1, 1)
+			print("Exiting...")
+			looping = false
+			os.queueEvent("dummy")
+			os.pullEvent()
+		end
+	end
 end
