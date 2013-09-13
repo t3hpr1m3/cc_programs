@@ -1,3 +1,9 @@
+--[[
+-- Monitors a pair of Railcraft Iron Tanks, one on either side
+-- of the computer.  This is basically a remote query terminal,
+-- with the main computer sending queries over the wired network.
+--]]
+
 os.loadAPI('vUtils')
 
 -- Find the available tanks
@@ -32,6 +38,7 @@ while on do
         stats = {}
         stats["current"] = t.current
         stats["capacity"] = t.capacity
+		stats["percentage"] = t.current / t.capacity
         stats["liquid"] = t.liquid
         print("Tank " .. i .. ": " .. stats.current .. "/" .. stats.capacity)
         table.insert(tankData, stats)
