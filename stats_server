@@ -6,6 +6,8 @@ os.loadAPI('vUtils')
   RESET
 --]]
 
+local MONITOR_ID = "monitor_0"
+
 function buildTankTable(tanks)
   local offset = 0
   local barWidth = 0
@@ -16,6 +18,10 @@ function buildTankTable(tanks)
   return tanks
 end
 
+function redirectToMonitor()
+	term.redirect(peripheral.wrap(MONITOR_ID))
+end
+
 -- Open the wired network
 local net = peripheral.wrap("back")
 net.open(1)
@@ -23,7 +29,7 @@ net.open(1)
 -- Open the monitor
 local monitor = peripheral.wrap("right")
 -- Put the output on the monitor
--- term.redirect(peripheral.wrap("right"))
+term.redirect(peripheral.wrap("monitor_0"))
 term.clear()
 term.setCursorPos(1,1)
 local w, h = term.getSize()
@@ -43,13 +49,14 @@ while on do
     os.startTimer(interval)
   elseif event == "modem_message" then
     -- Process stat response
+	print("Received STATS response")
     message = textutils.unserialize(p4)
     if message["TANK_DATA"] ~= nil then
       tanks = buildTankTable(message["TANK_DATA"])
     end
 
-    --term.redirect(monitor)
-    --term.clear()
+	redirectToMonitor()
+	term.clear()
     for i, t in pairs(tanks) do
       term.setCursorPos(1, i)
       term.write(t["label"])
@@ -66,12 +73,9 @@ while on do
       progressString = " " .. math.floor(progress * 100) .. "% "
       term.setCursorPos(w - (barWidth / 2) - (#progressString / 2), y)
       term.write(progressString)
-      --print("barWidth: " .. barWidth)
-      
-      --t["bar"].setWidth(width / message[i].capacity * message[i].current)
       term.setCursorPos(w, h)
     end
-    --term.restore()
+    term.restore()
   elseif (event == "key" and p1 == 16) then
     term.clear()
     term.setCursorPos(1, 1)
