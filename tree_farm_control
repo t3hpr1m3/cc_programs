@@ -70,9 +70,9 @@ function getCellStats(c)
 	stats = c.getPowerProvider()
 
 	-- Add some quick helper values for the rest of the script to use 
-	stats["full"] = stats["energyStored"] == stats["maxEnergyStored"]
-	stats["drained"] = stats["maxEnergyStored"] / stats["energyStored"] < .1
 	stats["percentage"] = stats["energyStored"] / stats["maxEnergyStored"]
+	stats["full"] = stats["energyStored"] == stats["maxEnergyStored"]
+	stats["drained"] = stats["percentage"] < .1
 	return stats
 end
 
