@@ -1,0 +1,90 @@
+os.loadAPI('vUtils')
+
+-- The Tank class
+Tank = {}
+Tank.__index = Tank
+
+function Tank.create(s)
+  assert(type(s) == "string", "Tank.create() expects argument 'side' to be a valid side.")
+  assert(Tank.isTank(s) == true, "Tank.create(): No valve found on side " .. s .. ".")
+
+  local t = {}
+  setmetatable(t, Tank)
+
+  t.p = peripheral.wrap(s)
+  t.side = s
+  t.capacity = 0
+  t.current = 0
+  t.liquid = ''
+  return t
+end
+
+function Tank.get_attached_tanks()
+  local t = {}
+  local sides = rs.getSides()
+  for i = 1, #sides do
+    if Tank.isTank(sides[i]) then
+      table.insert(t, Tank.create(sides[i]))
+    end
+  end
+  return t
+end
+
+-- Is there a tank attached to a particular side of the computer?
+function Tank.isTank(side)
+  return (peripheral.isPresent(side) and peripheral.getType(side) == "iron_tank_valve")
+end
+
+-- Retrieve the data from RailCraft
+function Tank:fetchData()
+  local d = self.p.getTanks(self.side)[1]
+  self.capacity = d.capacity
+  self.current = d.amount
+  self.liquid = d.name
+end
+
+-- Find the available tanks
+local tanks = Tank.get_attached_tanks()
+
+-- Will get switched to off when q is pressed
+local on = true
+
+-- Open the modem for communication
+net = peripheral.wrap("back")
+net.open(2)
+if net.isOpen(2) then
+  term.clear()
+  term.setCursorPos(1,1)
+  print("Terminal " .. os.computerID() .. " waiting for queries...")
+else
+  print("Unable to open modem")
+  return
+end
+
+local stats = {}
+local tankData = {}
+
+while on do
+  local event, p1, p2, p3, p4 = os.pullEvent()
+  if event == "modem_message" then
+    if p4 == "GET_STATS" then
+      print("Received GET_STATS from " .. p1)
+      tankData = {}
+	    for i, t in pairs(tanks) do
+	      t:fetchData()
+        stats = {}
+        stats["current"] = t.current
+        stats["capacity"] = t.capacity
+        stats["liquid"] = t.liquid
+        print("Tank " .. i .. ": " .. stats.current .. "/" .. stats.capacity)
+        table.insert(tankData, stats)
+	    end
+      net.transmit(p3, p2, textutils.serialize({TANK_DATA = tankData}))
+    end
+  else
+    local key = p1
+    if key == 29 then
+      on = false
+    end
+  end
+end
