@@ -12,6 +12,8 @@
 -- to be turned on/off with a redstone signal.
 --]]
 
+os.loadAPI("vUtils")
+
 -- Constants for the various bits, in case I ever need to rearrange.
 local ENGINE_COLOR = colors.white
 local ENGINE_SIDE = "bottom"
@@ -109,7 +111,7 @@ end
 local interval = 5
 
 -- Wrap up the energy cell
-local cell = EnergyCell.create(CELL_SIDE)
+local cell = vUtils.EnergyCell.create(CELL_SIDE)
 
 -- Print the initial "menu"
 term.clear()
