@@ -26,6 +26,27 @@ local engineStatus = nil
 
 local w, h = term.getSize()
 
+function progressBar(label, percentage, y_pos)
+	local w, h = term.getSize()
+	local x = term.getCursorPos()
+	local barWidth, progressString
+	term.setCursor(1, y_pos)
+	term.clearLine()
+	term.write(label)
+	term.write("[")
+	x, y = term.getCursorPos()
+	barWidth = w - x
+	term.setCursorPos(w, y_pos)
+	term.write("]")
+	term.setCursorPos(x, y_pos)
+	for i = 1, math.floor(barWidth * percentage) do
+		term.write("#")
+	end
+	progressString = " " .. math.floor(percentage * 100) .. "% "
+	term.setCursorPos(w - (barWidth / 2) - (#progressString / 2), y)
+	term.write(progressString)
+end
+
 --[[
 -- Retrieves the status of the Steam engines
 --]]
@@ -63,53 +84,6 @@ function printEngineStatus()
 	end
 end
 
--- The Energy Cell class
-EnergyCell = {}
-EnergyCell.__index = EnergyCell
-
-function EnergyCell.create(s)
-	assert(type(s) == "string", "EnergyCell.create() expects argument 'side' to be a valid side.")
-	assert(EnergyCell.isEnergyCell(s) == true, "EnergyCell.create(): No EnergyCell found on side " .. s .. ".")
-
-	local e = {}
-	setmetatable(e, EnergyCell)
-
-	e.p = peripheral.wrap(s)
-	e.side = s
-	e.capacity = 0
-	e.current = 0
-	e.percentage = 0
-	e.full = false
-	e.drained = false
-	return e
-end
-
-function EnergyCell.isEnergyCell(side)
-	return (peripheral.isPresent(side) and peripheral.getType(side) == "redstone_energy_cell")
-end
-
-function EnergyCell:poll()
-	local d = self.p.getPowerProvider()
-	self.capacity = d["maxEnergyStored"]
-	self.current = d["energyStored"]
-	self.percentage = self.current / self.capacity
-	self.full = self.current == self.capacity
-	self.drained = self.percentage < .1
-end
-
---[[
--- Retrieve energy stats from the Redstone Energy Cell.
---]]
-function getCellStats(c)
-	stats = c.getPowerProvider()
-
-	-- Add some quick helper values for the rest of the script to use 
-	stats["percentage"] = stats["energyStored"] / stats["maxEnergyStored"]
-	stats["full"] = stats["energyStored"] == stats["maxEnergyStored"]
-	stats["drained"] = stats["percentage"] < .1
-	return stats
-end
-
 --[[
 -- Dumps the Energy cell data to the screen.
 --]]
@@ -123,12 +97,10 @@ function printCellStats(cell)
 	term.setCursorPos(w, 1)
 	term.write("]")
 	term.setCursorPos(x, 1)
-	--for i = 1, math.floor(barWidth * stats["percentage"]) do
 	for i = 1, math.floor(barWidth * cell.percentage) do
 		term.write("#")
 	end
 	currentString = " " .. math.floor(cell.percentage * 100) .. "% "
-	--currentString = " " .. math.floor(stats["percentage"] * 100) .. "% "
 	term.setCursorPos(w - (barWidth / 2) - (#currentString / 2), y)
 	term.write(currentString)
 end
@@ -138,14 +110,8 @@ end
 --]]
 function toggleFarmStatus()
 	redstone.setOutput(FARM_SIDE, not (redstone.getOutput(FARM_SIDE)))
-	--[[
-	if redstone.getOutput(FARM_SIDE) == true then
-		redstone.setOutput(FARM_SIDE, false)
-	else
-		redstone.setOutput(FARM_SIDE, true)
-	end
-	--]]
 	printFarmStatus()
+	saveFarmStatus()
 end
 
 --[[
@@ -163,11 +129,37 @@ function printFarmStatus()
 	end
 end
 
+function saveFarmStatus()
+	f = fs.open("farm_status", "w")
+	if redstone.getOutput(FARM_SIDE) == true then
+		f.writeLine("0")
+	else
+		f.writeLine("1")
+	end
+	f.close
+end
+
+function readFarmStatus()
+	local f = fs.open("farm_status", "r")
+	if f == nil then
+		redstone.setOutput(FARM_SIDE, true)
+		saveFarmStatus()
+	else
+		local d = f.readLine()
+		f.close()
+		if d == "1" then
+			return true
+		else
+			return false
+		end
+	end
+end
+
 -- Number of seconds to wait between loop iterations
 local interval = 5
 
 -- Wrap up the energy cell
-local cell = EnergyCell.create(CELL_SIDE) --peripheral.wrap(CELL_SIDE)
+local cell = EnergyCell.create(CELL_SIDE)
 
 -- Print the initial "menu"
 term.clear()
@@ -181,10 +173,15 @@ term.setCursorPos(1, 8)
 term.clearLine()
 term.write("Press 'Q' to exit.")
 
+-- Turn the farm on/off depending on its last state
+if getFarmStatus() == false then
+	redstone.setOutput(FARM_SIDE, true)
+end
+
 -- Do an initial dump of the stats
 cell:poll()
---local cellStats = getCellStats(cell)
-printCellStats(cell)
+progressBar("Cell:    ", cell.percentage, 1)
+--printCellStats(cell)
 printEngineStatus()
 printFarmStatus()
 
@@ -202,22 +199,14 @@ while looping do
 		-- TIMER events
 		--]]
 		cell:poll()
+		progressBar("Cell:    ", cell.percentage, 1)
 		printCellStats(cell)
-		--cellStats = getCellStats(cell)
-		--printCellStats(cellStats)
 		printFarmStatus()
 		if cell.drained == true then
 			setEngineStatus(true)
 		elseif cell.full == true then
 			setEngineStatus(false)
 		end
-		--[[
-		if cellStats["drained"] == true then
-			setEngineStatus(true)
-		elseif cellStats["full"] == true then
-			setEngineStatus(false)
-		end
-		--]]
 		os.startTimer(interval)
 	elseif event == "key" then
 		--[[
