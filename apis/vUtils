@@ -1,0 +1,12 @@
+function print_table(t, indent)
+  if not indent then indent = 0 end
+  for key, value in pairs(t) do
+    formatting = string.rep(" ", indent) .. key .. ": "
+    if type(value) == "table" then
+      print(formatting)
+      print_table(value, indent + 2)
+    else
+      print(formatting .. tostring(value))
+    end
+  end
+end
