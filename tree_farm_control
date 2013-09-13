@@ -26,27 +26,6 @@ local engineStatus = nil
 
 local w, h = term.getSize()
 
-function progressBar(label, percentage, y_pos)
-	local w, h = term.getSize()
-	local x = term.getCursorPos()
-	local barWidth, progressString
-	term.setCursorPos(1, y_pos)
-	term.clearLine()
-	term.write(label)
-	term.write("[")
-	x, y = term.getCursorPos()
-	barWidth = w - x
-	term.setCursorPos(w, y_pos)
-	term.write("]")
-	term.setCursorPos(x, y_pos)
-	for i = 1, math.floor(barWidth * percentage) do
-		term.write("#")
-	end
-	progressString = " " .. math.floor(percentage * 100) .. "% "
-	term.setCursorPos(w - (barWidth / 2) - (#progressString / 2), y)
-	term.write(progressString)
-end
-
 --[[
 -- Retrieves the status of the Steam engines
 --]]
@@ -73,36 +52,14 @@ end
 -- Dumps the engine status to the screen.
 --]]
 function printEngineStatus()
-	local status = getEngineStatus()
-	term.setCursorPos(1, 2)
-	term.clearLine()
-	term.write("Engines: ")
-	if status == true then
-		term.write("     ON")
-	else
-		term.write("OFF")
-	end
+	vUtils.printToggle("Engines: ", getEngineStatus(), 2)
 end
 
 --[[
 -- Dumps the Energy cell data to the screen.
 --]]
 function printCellStats(cell)
-	local x, y, i, barWidth, current, currentString
-	term.setCursorPos(1, 1)
-	term.clearLine()
-	term.write("Cell:    [")
-	x, y = term.getCursorPos()
-	barWidth = w - x
-	term.setCursorPos(w, 1)
-	term.write("]")
-	term.setCursorPos(x, 1)
-	for i = 1, math.floor(barWidth * cell.percentage) do
-		term.write("#")
-	end
-	currentString = " " .. math.floor(cell.percentage * 100) .. "% "
-	term.setCursorPos(w - (barWidth / 2) - (#currentString / 2), y)
-	term.write(currentString)
+	vUtils.progressBar("Cell:    ", cell.percentage, 1)
 end
 
 --[[
@@ -119,14 +76,7 @@ end
 --]]
 function printFarmStatus()
 	local disabled = redstone.getOutput(FARM_SIDE)
-	term.setCursorPos(1, 3)
-	term.clearLine()
-	term.write("Farm:    ")
-	if disabled == false then
-		term.write("     ON")
-	else
-		term.write("OFF")
-	end
+	vUtils.printToggle("Farm:    ", disabled == false, 3)
 end
 
 function saveFarmStatus()
@@ -180,8 +130,7 @@ end
 
 -- Do an initial dump of the stats
 cell:poll()
-progressBar("Cell:    ", cell.percentage, 1)
---printCellStats(cell)
+printCellStats(cell)
 printEngineStatus()
 printFarmStatus()
 
@@ -199,7 +148,6 @@ while looping do
 		-- TIMER events
 		--]]
 		cell:poll()
-		progressBar("Cell:    ", cell.percentage, 1)
 		printCellStats(cell)
 		printFarmStatus()
 		if cell.drained == true then
